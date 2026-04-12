@@ -137,8 +137,8 @@ export default function StokPage() {
               key={category}
               onClick={() => setActiveCategory(category)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${activeCategory === category
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card border border-border text-muted-foreground hover:text-foreground'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card border border-border text-muted-foreground hover:text-foreground'
                 }`}
             >
               {category}
@@ -329,6 +329,7 @@ export default function StokPage() {
                   <option value="Minuman">Minuman</option>
                   <option value="Makanan">Makanan</option>
                   <option value="Sembako">Sembako</option>
+                  <option value="Lainnya">Lainnya</option>
                 </select>
               </div>
 
