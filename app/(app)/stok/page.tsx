@@ -8,12 +8,13 @@ import type { Product } from '@/lib/types';
 
 const categories = ['Semua', 'Minuman', 'Makanan', 'Sembako', 'Lainnya'] as const;
 
-type CategoryType = 'Minuman' | 'Makanan' | 'Sembako';
+type CategoryType = 'Minuman' | 'Makanan' | 'Sembako' | 'Lainnya';
 
 const categoryColors: Record<CategoryType, string> = {
   Minuman: 'bg-blue-100 text-blue-700',
   Makanan: 'bg-orange-100 text-orange-700',
   Sembako: 'bg-emerald-100 text-emerald-700',
+  Lainnya: 'bg-purple-100 text-purple-700',
 };
 
 export default function StokPage() {
