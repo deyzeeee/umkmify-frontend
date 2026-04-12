@@ -1,30 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Product, CartItem, Transaction, User, DailySales, TopProduct } from './types';
 
-// Initial mock data
-const initialProducts: Product[] = [
-  { id: '1', name: 'Kopi Susu Gula Aren', category: 'Minuman', price: 25000, stock: 45, minStock: 10, updatedAt: '2024-01-15' },
-  { id: '2', name: 'Es Teh Manis', category: 'Minuman', price: 8000, stock: 100, minStock: 20, updatedAt: '2024-01-15' },
-  { id: '3', name: 'Nasi Goreng Spesial', category: 'Makanan', price: 28000, stock: 30, minStock: 10, updatedAt: '2024-01-14' },
-  { id: '4', name: 'Mie Goreng', category: 'Makanan', price: 22000, stock: 25, minStock: 10, updatedAt: '2024-01-14' },
-  { id: '5', name: 'Beras Premium 5kg', category: 'Sembako', price: 75000, stock: 4, minStock: 5, updatedAt: '2024-01-13' },
-  { id: '6', name: 'Minyak Goreng 2L', category: 'Sembako', price: 32000, stock: 3, minStock: 5, updatedAt: '2024-01-13' },
-  { id: '7', name: 'Gula Pasir 1kg', category: 'Sembako', price: 15000, stock: 20, minStock: 10, updatedAt: '2024-01-12' },
-  { id: '8', name: 'Americano', category: 'Minuman', price: 20000, stock: 50, minStock: 15, updatedAt: '2024-01-12' },
-  { id: '9', name: 'Matcha Latte', category: 'Minuman', price: 28000, stock: 0, minStock: 10, updatedAt: '2024-01-11' },
-  { id: '10', name: 'Ayam Geprek', category: 'Makanan', price: 25000, stock: 15, minStock: 8, updatedAt: '2024-01-11' },
-];
-
-const initialTransactions: Transaction[] = [
-  { id: 'TRX001', items: [], subtotal: 75000, tax: 7500, total: 82500, status: 'Selesai', createdAt: '2024-01-15 14:30' },
-  { id: 'TRX002', items: [], subtotal: 125000, tax: 12500, total: 137500, status: 'Selesai', createdAt: '2024-01-15 13:15' },
-  { id: 'TRX003', items: [], subtotal: 45000, tax: 4500, total: 49500, status: 'Selesai', createdAt: '2024-01-15 11:45' },
-  { id: 'TRX004', items: [], subtotal: 200000, tax: 20000, total: 220000, status: 'Selesai', createdAt: '2024-01-14 16:20' },
-  { id: 'TRX005', items: [], subtotal: 88000, tax: 8800, total: 96800, status: 'Selesai', createdAt: '2024-01-14 10:00' },
-];
-
+// ==========================================
+// DATA DUMMY (KHUSUS UNTUK GRAFIK DASHBOARD BIAR GAK BLANK)
+// ==========================================
 const dailySalesData: DailySales[] = [
   { day: 'Sen', amount: 5200000 },
   { day: 'Sel', amount: 4800000 },
@@ -50,28 +31,29 @@ interface StoreContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (data: { name: string; storeName: string; email: string; password: string }) => Promise<boolean>;
   logout: () => void;
-  
+
   // Products
   products: Product[];
   addProduct: (product: Omit<Product, 'id' | 'updatedAt'>) => void;
   updateProduct: (id: string, product: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
-  
+  fetchProducts: () => Promise<void>; // Tambahan baru buat refresh data
+
   // Cart
   cart: CartItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  
+
   // Transactions
   transactions: Transaction[];
   processTransaction: () => Transaction | null;
-  
+
   // Dashboard data
   dailySales: DailySales[];
   topProducts: TopProduct[];
-  
+
   // Metrics
   todaySales: number;
   totalTransactions: number;
@@ -81,68 +63,149 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
+// URL BACKEND DARI VERCEL (.env)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]); // Mulai dengan kosong, akan diisi dari API
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
   const isAuthenticated = user !== null;
-  
-  // Auth functions
-  const login = useCallback(async (email: string, _password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setUser({
-      id: '1',
-      name: 'Ahmad Fauzi',
-      storeName: 'Warung Berkah',
-      email: email,
-    });
-    return true;
+
+  // Fungsi helper buat ngambil Token JWT (biar aman nembak API)
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+  };
+
+  // ==========================================
+  // FETCH PRODUK DARI BACKEND
+  // ==========================================
+  const fetchProducts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/produk`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data); // Simpan data dari database ke state frontend
+      }
+    } catch (error) {
+      console.error("Gagal mengambil data produk:", error);
+    }
   }, []);
-  
+
+  // Pas website pertama kali dibuka, cek user login dan ambil produk
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+      fetchProducts();
+    }
+  }, [fetchProducts]);
+
+  // ==========================================
+  // FUNGSI AUTHENTICATION (LOGIN & REGISTER)
+  // ==========================================
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Simpan token dari backend
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setUser(data.user);
+        fetchProducts(); // Ambil produk setelah berhasil login
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Login Error:", error);
+      return false;
+    }
+  }, [fetchProducts]);
+
   const register = useCallback(async (data: { name: string; storeName: string; email: string; password: string }): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setUser({
-      id: '1',
-      name: data.name,
-      storeName: data.storeName,
-      email: data.email,
-    });
-    return true;
+    try {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      return res.ok;
+    } catch (error) {
+      console.error("Register Error:", error);
+      return false;
+    }
   }, []);
-  
+
   const logout = useCallback(() => {
     setUser(null);
     setCart([]);
+    setProducts([]);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }, []);
-  
-  // Product functions
-  const addProduct = useCallback((product: Omit<Product, 'id' | 'updatedAt'>) => {
-    const newProduct: Product = {
-      ...product,
-      id: Date.now().toString(),
-      updatedAt: new Date().toISOString().split('T')[0],
-    };
-    setProducts(prev => [...prev, newProduct]);
-  }, []);
-  
-  const updateProduct = useCallback((id: string, updates: Partial<Product>) => {
-    setProducts(prev => prev.map(p => 
-      p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : p
-    ));
-  }, []);
-  
-  const deleteProduct = useCallback((id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-  }, []);
-  
-  // Cart functions
+
+  // ==========================================
+  // FUNGSI MANAJEMEN PRODUK (CRUD)
+  // ==========================================
+  const addProduct = useCallback(async (product: Omit<Product, 'id' | 'updatedAt'>) => {
+    try {
+      const res = await fetch(`${API_URL}/api/produk`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(product)
+      });
+      if (res.ok) fetchProducts(); // Refresh tabel setelah nambah
+    } catch (error) {
+      console.error("Gagal tambah produk:", error);
+    }
+  }, [fetchProducts]);
+
+  const updateProduct = useCallback(async (id: string, updates: Partial<Product>) => {
+    try {
+      const res = await fetch(`${API_URL}/api/produk/${id}`, {
+        method: 'PUT', // Sesuaikan jika backend kamu pakai PATCH
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) fetchProducts(); // Refresh tabel
+    } catch (error) {
+      console.error("Gagal update produk:", error);
+    }
+  }, [fetchProducts]);
+
+  const deleteProduct = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/produk/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) fetchProducts(); // Refresh tabel
+    } catch (error) {
+      console.error("Gagal hapus produk:", error);
+    }
+  }, [fetchProducts]);
+
+  // ==========================================
+  // FUNGSI KERANJANG (CART) - Tetap di lokal biar cepat
+  // ==========================================
   const addToCart = useCallback((product: Product) => {
     if (product.stock <= 0) return;
-    
+
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -156,11 +219,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return [...prev, { product, quantity: 1 }];
     });
   }, []);
-  
+
   const removeFromCart = useCallback((productId: string) => {
     setCart(prev => prev.filter(item => item.product.id !== productId));
   }, []);
-  
+
   const updateCartQuantity = useCallback((productId: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId);
@@ -170,19 +233,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       item.product.id === productId ? { ...item, quantity } : item
     ));
   }, [removeFromCart]);
-  
+
   const clearCart = useCallback(() => {
     setCart([]);
   }, []);
-  
-  // Transaction functions
+
+  // ==========================================
+  // FUNGSI TRANSAKSI (CHECKOUT KASIR)
+  // ==========================================
   const processTransaction = useCallback((): Transaction | null => {
     if (cart.length === 0) return null;
-    
+
     const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     const tax = subtotal * 0.1;
     const total = subtotal + tax;
-    
+
     const transaction: Transaction = {
       id: `TRX${String(transactions.length + 1).padStart(3, '0')}`,
       items: [...cart],
@@ -192,8 +257,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       status: 'Selesai',
       createdAt: new Date().toLocaleString('id-ID'),
     };
-    
-    // Update stock
+
+    // Secara lokal kurangi stok biar UI cepet
     setProducts(prev => prev.map(product => {
       const cartItem = cart.find(item => item.product.id === product.id);
       if (cartItem) {
@@ -201,19 +266,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       return product;
     }));
-    
+
     setTransactions(prev => [transaction, ...prev]);
     setCart([]);
-    
+
+    // NOTE: Kalau backend kamu punya API khusus buat Transaksi/Checkout,
+    // Temenmu bisa nambahin blok fetch POST ke /api/transaksi di bagian sini.
+
     return transaction;
   }, [cart, transactions.length]);
-  
-  // Computed metrics
+
+  // Computed metrics (Masih dummy untuk dashboard)
   const todaySales = 6800000;
   const totalTransactions = 342;
   const lowStockCount = products.filter(p => p.stock <= p.minStock && p.stock > 0).length;
   const profitMargin = 28;
-  
+
   const value: StoreContextType = {
     user,
     isAuthenticated,
@@ -224,6 +292,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addProduct,
     updateProduct,
     deleteProduct,
+    fetchProducts,
     cart,
     addToCart,
     removeFromCart,
@@ -238,7 +307,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     lowStockCount,
     profitMargin,
   };
-  
+
   return (
     <StoreContext.Provider value={value}>
       {children}
