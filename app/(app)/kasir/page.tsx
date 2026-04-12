@@ -6,7 +6,7 @@ import { useStore } from '@/lib/store-context';
 import { formatRupiah } from '@/lib/format';
 import type { Product, Transaction } from '@/lib/types';
 
-const categories = ['Semua', 'Minuman', 'Makanan', 'Sembako'] as const;
+const categories = ['Semua', 'Minuman', 'Makanan', 'Sembako', 'Lainnya'] as const;
 
 export default function KasirPage() {
   const { products, cart, addToCart, removeFromCart, updateCartQuantity, clearCart, processTransaction } = useStore();
@@ -15,20 +15,20 @@ export default function KasirPage() {
   const [showCart, setShowCart] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
-  
+
   // Filter products
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === 'Semua' || product.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
-  
+
   // Cart calculations
   const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  
+
   const handleProcessPayment = () => {
     const transaction = processTransaction();
     if (transaction) {
@@ -37,18 +37,18 @@ export default function KasirPage() {
       setShowCart(false);
     }
   };
-  
+
   const handleNewTransaction = () => {
     setShowSuccess(false);
     setLastTransaction(null);
   };
-  
+
   const handleProductClick = (product: Product) => {
     if (product.stock > 0) {
       addToCart(product);
     }
   };
-  
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
       {/* Product Area */}
@@ -58,7 +58,7 @@ export default function KasirPage() {
           <h1 className="text-xl md:text-2xl font-bold text-foreground">Kasir</h1>
           <p className="text-sm text-muted-foreground mt-1">Pilih produk untuk ditambahkan ke keranjang</p>
         </header>
-        
+
         {/* Search Bar */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -70,40 +70,38 @@ export default function KasirPage() {
             className="w-full h-12 pl-10 pr-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
           />
         </div>
-        
+
         {/* Category Filter */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                activeCategory === category
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeCategory === category
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card border border-border text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               {category}
             </button>
           ))}
         </div>
-        
+
         {/* Product Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {filteredProducts.map((product) => {
             const isOutOfStock = product.stock === 0;
             const isLowStock = product.stock > 0 && product.stock <= 5;
-            
+
             return (
               <button
                 key={product.id}
                 onClick={() => handleProductClick(product)}
                 disabled={isOutOfStock}
-                className={`bg-card rounded-xl shadow-sm p-3 md:p-4 text-left transition-all ${
-                  isOutOfStock
+                className={`bg-card rounded-xl shadow-sm p-3 md:p-4 text-left transition-all ${isOutOfStock
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:border-primary border border-transparent cursor-pointer'
-                }`}
+                  }`}
               >
                 <p className="font-medium text-foreground text-sm truncate">{product.name}</p>
                 <p className="text-primary font-bold mt-1">{formatRupiah(product.price)}</p>
@@ -123,13 +121,13 @@ export default function KasirPage() {
           })}
         </div>
       </div>
-      
+
       {/* Cart Panel - Desktop */}
       <div className="hidden md:flex flex-col w-[340px] bg-card border-l border-border">
         <div className="p-4 border-b border-border">
           <h2 className="font-bold text-lg text-foreground">Keranjang</h2>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -171,7 +169,7 @@ export default function KasirPage() {
             </div>
           )}
         </div>
-        
+
         {/* Cart Footer */}
         <div className="p-4 border-t border-border bg-card">
           <div className="space-y-2 mb-4">
@@ -199,7 +197,7 @@ export default function KasirPage() {
           </button>
         </div>
       </div>
-      
+
       {/* Mobile Cart Button */}
       {cartItemCount > 0 && (
         <button
@@ -210,7 +208,7 @@ export default function KasirPage() {
           <span className="font-semibold">Keranjang ({cartItemCount})</span>
         </button>
       )}
-      
+
       {/* Mobile Cart Bottom Sheet */}
       {showCart && (
         <div className="md:hidden fixed inset-0 z-50">
@@ -223,14 +221,14 @@ export default function KasirPage() {
             <div className="flex justify-center py-3">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
-            
+
             <div className="px-4 pb-2 border-b border-border flex items-center justify-between">
               <h2 className="font-bold text-lg text-foreground">Keranjang</h2>
               <button onClick={() => setShowCart(false)} className="p-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-4">
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8">
@@ -272,7 +270,7 @@ export default function KasirPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Footer */}
             <div className="p-4 border-t border-border">
               <div className="space-y-2 mb-4">
@@ -302,7 +300,7 @@ export default function KasirPage() {
           </div>
         </div>
       )}
-      
+
       {/* Success Modal */}
       {showSuccess && lastTransaction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -317,15 +315,15 @@ export default function KasirPage() {
                 <CheckCircle className="w-8 h-8 text-emerald-600" />
               </div>
             </div>
-            
+
             <h3 className="text-xl font-bold text-emerald-600 text-center mb-2">
               Transaksi Berhasil!
             </h3>
-            
+
             <p className="text-2xl font-bold text-foreground text-center mb-4">
               {formatRupiah(lastTransaction.total)}
             </p>
-            
+
             {/* Items List */}
             <div className="bg-secondary rounded-lg p-3 mb-4 max-h-40 overflow-y-auto">
               {lastTransaction.items.map((item, index) => (
@@ -335,7 +333,7 @@ export default function KasirPage() {
                 </div>
               ))}
             </div>
-            
+
             {/* Actions */}
             <div className="flex gap-3">
               <button
