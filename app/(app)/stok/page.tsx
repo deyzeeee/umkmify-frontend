@@ -6,7 +6,7 @@ import { useStore } from '@/lib/store-context';
 import { formatRupiah } from '@/lib/format';
 import type { Product } from '@/lib/types';
 
-const categories = ['Semua', 'Minuman', 'Makanan', 'Sembako'] as const;
+const categories = ['Semua', 'Minuman', 'Makanan', 'Sembako', 'Lainnya'] as const;
 
 type CategoryType = 'Minuman' | 'Makanan' | 'Sembako';
 
@@ -22,24 +22,24 @@ export default function StokPage() {
   const [activeCategory, setActiveCategory] = useState<string>('Semua');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  
+
   // Form state
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState<CategoryType>('Minuman');
   const [formPrice, setFormPrice] = useState('');
   const [formStock, setFormStock] = useState('');
   const [formMinStock, setFormMinStock] = useState('');
-  
+
   // Filter products
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === 'Semua' || product.category === activeCategory;
     return matchesSearch && matchesCategory;
   });
-  
+
   const lowStockProducts = products.filter(p => p.stock <= p.minStock && p.stock > 0);
   const totalStockValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
-  
+
   const openAddModal = () => {
     setEditingProduct(null);
     setFormName('');
@@ -49,7 +49,7 @@ export default function StokPage() {
     setFormMinStock('');
     setShowModal(true);
   };
-  
+
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
     setFormName(product.name);
@@ -59,10 +59,10 @@ export default function StokPage() {
     setFormMinStock(String(product.minStock));
     setShowModal(true);
   };
-  
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const productData = {
       name: formName,
       category: formCategory,
@@ -70,22 +70,22 @@ export default function StokPage() {
       stock: Number(formStock),
       minStock: Number(formMinStock),
     };
-    
+
     if (editingProduct) {
       updateProduct(editingProduct.id, productData);
     } else {
       addProduct(productData);
     }
-    
+
     setShowModal(false);
   };
-  
+
   const handleDelete = (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
       deleteProduct(id);
     }
   };
-  
+
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
@@ -108,7 +108,7 @@ export default function StokPage() {
           </button>
         </div>
       </header>
-      
+
       {/* Low Stock Alert */}
       {lowStockProducts.length > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4 flex items-center gap-3">
@@ -118,7 +118,7 @@ export default function StokPage() {
           </p>
         </div>
       )}
-      
+
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row gap-3 mb-4">
         <div className="relative flex-1">
@@ -136,18 +136,17 @@ export default function StokPage() {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeCategory === category
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${activeCategory === category
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-card border border-border text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               {category}
             </button>
           ))}
         </div>
       </div>
-      
+
       {/* Table (Desktop) */}
       <div className="hidden md:block bg-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden">
         <table className="w-full">
@@ -165,7 +164,7 @@ export default function StokPage() {
           <tbody className="divide-y divide-border">
             {filteredProducts.map((product) => {
               const isLowStock = product.stock <= product.minStock;
-              
+
               return (
                 <tr key={product.id} className="hover:bg-secondary/50 transition-colors">
                   <td className="px-4 py-3">
@@ -210,7 +209,7 @@ export default function StokPage() {
             })}
           </tbody>
         </table>
-        
+
         {/* Footer */}
         <div className="px-4 py-3 border-t border-border flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm">
           <span className="text-muted-foreground">
@@ -221,12 +220,12 @@ export default function StokPage() {
           </span>
         </div>
       </div>
-      
+
       {/* Card List (Mobile) */}
       <div className="md:hidden space-y-3">
         {filteredProducts.map((product) => {
           const isLowStock = product.stock <= product.minStock;
-          
+
           return (
             <div key={product.id} className="bg-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-4">
               <div className="flex items-start justify-between gap-3 mb-2">
@@ -267,7 +266,7 @@ export default function StokPage() {
             </div>
           );
         })}
-        
+
         {/* Mobile Footer */}
         <div className="text-sm text-center py-3">
           <p className="text-muted-foreground mb-1">
@@ -278,7 +277,7 @@ export default function StokPage() {
           </p>
         </div>
       </div>
-      
+
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
@@ -291,7 +290,7 @@ export default function StokPage() {
             <div className="md:hidden flex justify-center py-3">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
-            
+
             <div className="px-6 pb-2 pt-4 md:pt-6 flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground">
                 {editingProduct ? 'Edit Produk' : 'Tambah Produk'}
@@ -300,7 +299,7 @@ export default function StokPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6 pt-4 space-y-4">
               <div>
                 <label htmlFor="product-name" className="block text-sm font-medium text-foreground mb-1.5">
@@ -316,7 +315,7 @@ export default function StokPage() {
                   required
                 />
               </div>
-              
+
               <div>
                 <label htmlFor="product-category" className="block text-sm font-medium text-foreground mb-1.5">
                   Kategori
@@ -332,7 +331,7 @@ export default function StokPage() {
                   <option value="Sembako">Sembako</option>
                 </select>
               </div>
-              
+
               <div>
                 <label htmlFor="product-price" className="block text-sm font-medium text-foreground mb-1.5">
                   Harga
@@ -347,7 +346,7 @@ export default function StokPage() {
                   required
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="product-stock" className="block text-sm font-medium text-foreground mb-1.5">
@@ -378,7 +377,7 @@ export default function StokPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
