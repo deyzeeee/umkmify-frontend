@@ -1,7 +1,7 @@
 export interface Product {
   id: string;
   name: string;
-  category: 'Minuman' | 'Makanan' | 'Sembako';
+  category: 'Minuman' | 'Makanan' | 'Sembako' | 'Lainnya';
   price: number;
   stock: number;
   minStock: number;
