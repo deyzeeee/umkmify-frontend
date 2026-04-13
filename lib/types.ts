@@ -3,6 +3,7 @@ export interface Product {
   name: string;
   category: 'Minuman' | 'Makanan' | 'Sembako' | 'Lainnya';
   price: number;
+  costPrice?: number;
   stock: number;
   minStock: number;
   updatedAt: string;
