@@ -209,7 +209,7 @@ export default function KasirPage() {
       {showCart && (
         <div className="md:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[70vh] flex flex-col">
+          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[85vh] flex flex-col">
             <div className="flex justify-center py-3">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
@@ -257,7 +257,7 @@ export default function KasirPage() {
       {showSuccess && lastTransaction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={handleNewTransaction} />
-          <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-md p-6">
+          <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-md p-6 print-area">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
                 <CheckCircle className="w-8 h-8 text-emerald-600" />
@@ -278,7 +278,7 @@ export default function KasirPage() {
                 <span>{formatRupiah(lastTransaction.tax)}</span>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 no-print">
               <button
                 onClick={() => window.print()}
                 className="flex-1 h-12 border border-border text-foreground rounded-lg font-medium hover:bg-secondary flex items-center justify-center gap-2"

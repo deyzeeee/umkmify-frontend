@@ -10,7 +10,9 @@ export default function DashboardPage() {
   const { todaySales, totalTransactions, lowStockCount, profitMargin, products } = useStore();
   
   // Find the product with lowest stock for AI insight
-  const lowStockProduct = products.find(p => p.stock <= p.minStock && p.stock > 0);
+  const lowStockProduct = products.length > 0 
+  ? products.reduce((min, p) => p.stock < min.stock ? p : min, products[0])
+  : null;
   
   const metrics = [
     {

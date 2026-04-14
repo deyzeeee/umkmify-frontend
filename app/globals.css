@@ -123,3 +123,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  /* Sembunyikan semua kecuali struk */
+  body > * { display: none !important; }
+  
+  /* Tampilkan hanya modal sukses */
+  .print-area { 
+    display: block !important; 
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    padding: 20px;
+  }
+
+  /* Sembunyikan tombol saat print */
+  .no-print { display: none !important; }
+}
