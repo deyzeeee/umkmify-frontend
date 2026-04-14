@@ -209,7 +209,7 @@ export default function KasirPage() {
       {showCart && (
         <div className="md:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[85vh] flex flex-col">
+          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl h-[85vh] flex flex-col">
             <div className="flex justify-center py-3">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
             </div>

@@ -121,8 +121,11 @@ export default function DashboardPage() {
                   Berdasarkan tren penjualan, stok produk ini diprediksi akan habis dalam 3 hari. 
                   Segera lakukan restocking untuk menghindari kehabisan stok.
                 </p>
-                <button className="mt-3 px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors">
-                  Lihat Rekomendasi
+                <button 
+                  onClick={() => window.location.href = '/stok'}
+                  className="mt-3 px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors"
+                >
+                  Lihat Rekomendasi →
                 </button>
               </div>
             </div>

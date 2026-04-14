@@ -215,7 +215,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       const salesArray: DailySales[] = days.map(day => ({
         day,
-        amount: salesMap[day] || Math.floor(Math.random() * 3000000) + 2000000,
+        amount: salesMap[day] || 0,
       }));
       setDailySales(salesArray);
 

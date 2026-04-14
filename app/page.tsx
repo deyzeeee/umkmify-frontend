@@ -11,11 +11,9 @@ export default function AuthPage() {
   const router = useRouter();
   const { login, register } = useStore();
   
-  // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   
-  // Register form state
   const [registerName, setRegisterName] = useState('');
   const [registerStore, setRegisterStore] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
@@ -27,9 +25,7 @@ export default function AuthPage() {
     setIsLoading(true);
     try {
       const success = await login(loginEmail, loginPassword);
-      if (success) {
-        router.push('/dashboard');
-      }
+      if (success) router.push('/dashboard');
     } finally {
       setIsLoading(false);
     }
@@ -49,17 +45,20 @@ export default function AuthPage() {
         email: registerEmail,
         password: registerPassword,
       });
-      if (success) {
-        router.push('/dashboard');
-      }
+      if (success) router.push('/dashboard');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleForgotPassword = () => {
+    const phone = '6281320123657';
+    const message = encodeURIComponent('Halo, saya lupa password akun UMKMify saya. Mohon bantuannya.');
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+  };
   
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-8">
-      {/* Logo and Title */}
       <div className="flex flex-col items-center mb-8">
         <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4">
           <Store className="w-8 h-8 text-primary-foreground" />
@@ -68,9 +67,7 @@ export default function AuthPage() {
         <p className="text-muted-foreground text-sm md:text-base mt-1">Platform All-in-One untuk UMKM</p>
       </div>
       
-      {/* Auth Card */}
       <div className="w-full max-w-md bg-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 md:p-8">
-        {/* Tab Toggle */}
         <div className="flex gap-2 mb-6">
           <button
             type="button"
@@ -135,7 +132,11 @@ export default function AuthPage() {
               {isLoading ? 'Memproses...' : 'Masuk'}
             </button>
             <div className="text-center">
-              <button type="button" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-sm text-primary hover:underline transition-colors"
+              >
                 Lupa password?
               </button>
             </div>
@@ -226,7 +227,6 @@ export default function AuthPage() {
         )}
       </div>
       
-      {/* Feature Highlights */}
       <div className="flex flex-wrap justify-center gap-6 mt-8">
         <div className="flex items-center gap-2 text-muted-foreground">
           <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
