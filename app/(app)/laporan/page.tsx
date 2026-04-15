@@ -15,28 +15,40 @@ export default function LaporanPage() {
 
   // Filter transaksi berdasarkan range
   const filteredTransactions = useMemo(() => {
-    const now = new Date();
-    return transactions.filter(trx => {
-      const trxDate = new Date(trx.createdAt);
-      if (isNaN(trxDate.getTime())) return true;
-      switch (selectedRange) {
-        case 'Hari Ini':
-          return trxDate.toDateString() === now.toDateString();
-        case 'Minggu Ini': {
-          const weekAgo = new Date(now);
-          weekAgo.setDate(now.getDate() - 7);
-          return trxDate >= weekAgo;
-        }
-        case 'Bulan Ini':
-          return trxDate.getMonth() === now.getMonth() &&
-            trxDate.getFullYear() === now.getFullYear();
-        case 'Tahun Ini':
-          return trxDate.getFullYear() === now.getFullYear();
-        default:
-          return true;
+  const now = new Date();
+  return transactions.filter(trx => {
+    // Parse format Indonesia: "14/4/2026, 13.49.06"
+    let trxDate: Date;
+    try {
+      // Ganti titik jadi titik dua untuk waktu, slash jadi format yang bisa diparsed
+      const cleaned = trx.createdAt
+        .replace(/(\d+)\.(\d+)\.(\d+)$/, '$1:$2:$3') // 13.49.06 → 13:49:06
+        .replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1');  // 14/4/2026 → 2026-4-14
+      trxDate = new Date(cleaned);
+      if (isNaN(trxDate.getTime())) trxDate = new Date(trx.createdAt);
+    } catch {
+      return true;
+    }
+    if (isNaN(trxDate.getTime())) return true;
+
+    switch (selectedRange) {
+      case 'Hari Ini':
+        return trxDate.toDateString() === now.toDateString();
+      case 'Minggu Ini': {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(now.getDate() - 7);
+        return trxDate >= weekAgo;
       }
-    });
-  }, [transactions, selectedRange]);
+      case 'Bulan Ini':
+        return trxDate.getMonth() === now.getMonth() &&
+          trxDate.getFullYear() === now.getFullYear();
+      case 'Tahun Ini':
+        return trxDate.getFullYear() === now.getFullYear();
+      default:
+        return true;
+    }
+  });
+}, [transactions, selectedRange]);
 
   // Hitung metrik dari transaksi yang sudah difilter
   const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
@@ -45,18 +57,24 @@ export default function LaporanPage() {
 
   // Bangun data grafik 7 hari dari transaksi real
   const chartData = useMemo(() => {
-    const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-    const map: Record<string, number> = {};
-    days.forEach(d => map[d] = 0);
-    filteredTransactions.forEach(trx => {
-      const d = new Date(trx.createdAt);
+  const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  const map: Record<string, number> = {};
+  days.forEach(d => map[d] = 0);
+  
+  filteredTransactions.forEach(trx => {
+    try {
+      const cleaned = trx.createdAt
+        .replace(/(\d+)\.(\d+)\.(\d+)$/, '$1:$2:$3')
+        .replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1');
+      const d = new Date(cleaned);
       if (!isNaN(d.getTime())) {
         const dayName = days[d.getDay()];
         map[dayName] = (map[dayName] || 0) + trx.total;
       }
-    });
-    return days.map(day => ({ day, amount: map[day] }));
-  }, [filteredTransactions]);
+    } catch {}
+  });
+  return days.map(day => ({ day, amount: map[day] }));
+} , [filteredTransactions]);
 
   const formatYAxis = (value: number) => {
     if (value === 0) return 'Rp 0';
