@@ -56,7 +56,7 @@ export default function LaporanPage() {
     });
   }, [transactions, selectedRange]);
 
-  // Hitung metrik utama
+  // Hitung metrik utama (RATA-RATA TRANSAKSI SUDAH DINAMIS DI SINI)
   const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
   const totalTrx = filteredTransactions.length;
   const avgTrx = totalTrx > 0 ? totalRevenue / totalTrx : 0;
@@ -102,9 +102,11 @@ export default function LaporanPage() {
     return [];
   }, [filteredTransactions, selectedRange]);
 
+  // FIX: Formatter pintar untuk grafik Laporan
   const formatYAxis = (value: number) => {
     if (value === 0) return 'Rp 0';
-    return `Rp ${(value / 1000000).toFixed(1)}jt`;
+    if (value < 1000000) return `Rp ${value / 1000}rb`; // Munculin 'rb' kalau di bawah 1 Juta
+    return `Rp ${(value / 1000000).toFixed(1)}jt`; // Munculin 'jt' kalau 1 Juta ke atas
   };
 
   // Export PDF

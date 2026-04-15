@@ -1,13 +1,17 @@
 'use client';
 
-import { Line, LineChart, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useStore } from '@/lib/store-context';
+import { formatRupiah } from '@/lib/format';
 
 export function SalesChart() {
   const { dailySales } = useStore();
   
+  // Formatter pintar untuk sumbu Y (kiri)
   const formatYAxis = (value: number) => {
-    return `Rp ${(value / 1000000).toFixed(1)}jt`;
+    if (value === 0) return 'Rp 0';
+    if (value < 1000000) return `Rp ${value / 1000}rb`; // Munculin 'rb'
+    return `Rp ${(value / 1000000).toFixed(1)}jt`; // Munculin 'jt'
   };
   
   return (
@@ -33,7 +37,8 @@ export function SalesChart() {
           width={70}
         />
         <Tooltip 
-          formatter={(value: number) => [`Rp ${(value / 1000000).toFixed(1)}jt`, 'Penjualan']}
+          // Formatter Tooltip diubah jadi angka real pakai formatRupiah
+          formatter={(value: number) => [formatRupiah(value), 'Penjualan']}
           contentStyle={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
