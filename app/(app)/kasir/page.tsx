@@ -82,41 +82,8 @@ export default function KasirPage() {
 
   return (
     <>
-      {/* CSS SAKTI ANTI-BLANK KHUSUS PRINT */}
-      <style>{`
-        @media print {
-          /* Sembunyikan semua elemen di web */
-          body * {
-            visibility: hidden;
-          }
-          /* Tampilkan khusus area struk */
-          #print-section, #print-section * {
-            visibility: visible;
-          }
-          /* Posisikan struk persis di pojok kiri atas kertas */
-          #print-section {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            transform: none !important;
-            background-color: white !important;
-            padding: 20px !important;
-            box-shadow: none !important;
-          }
-          /* Paksa semua teks & garis jadi hitam pekat biar gak tembus pandang */
-          #print-section * {
-            color: black !important;
-            border-color: black !important;
-          }
-          /* Hilangkan tombol-tombol saat nge-print */
-          .no-print, .no-print * {
-            display: none !important;
-          }
-        }
-      `}</style>
-
-      <div className="flex flex-col md:flex-row min-h-screen">
+      {/* Tambahan class "print:hidden" di bawah ini bikin seluruh UI kasir MENGHILANG pas di-print */}
+      <div className="flex flex-col md:flex-row min-h-screen print:hidden">
         {/* Product Area */}
         <div className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
           <header className="mb-4 md:mb-6">
@@ -287,77 +254,77 @@ export default function KasirPage() {
             </div>
           </div>
         )}
+      </div>
 
-        {/* Success Modal (Modal Struk) */}
-        {showSuccess && lastTransaction && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 no-print" onClick={handleNewTransaction} />
+      {/* Success Modal (Modal Struk) */}
+      {showSuccess && lastTransaction && (
+        /* print:static dan print:block akan me-reset posisi melayang menjadi halaman dokumen biasa saat nge-print */
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 print:static print:block print:p-0 print:bg-white print:text-black">
+          
+          <div className="absolute inset-0 bg-black/50 print:hidden" onClick={handleNewTransaction} />
+          
+          <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-md p-6 border border-border print:border-none print:shadow-none print:w-full print:max-w-none print:p-4 print:bg-white print:text-black">
             
-            {/* ID print-section ditambahkan di kotak ini */}
-            <div id="print-section" className="relative bg-card rounded-2xl shadow-xl w-full max-w-md p-6 border border-border">
-              
-              <div className="flex justify-center mb-4 no-print">
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-8 h-8 text-emerald-600" />
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-emerald-600 text-center mb-2 no-print">Transaksi Berhasil!</h3>
-              
-              {/* Header Struk (Cuma Muncul Pas Di-Print) */}
-              <div className="hidden print:block text-center mb-6 mt-2">
-                <h2 className="text-3xl font-bold mb-1">UMKMify</h2>
-                <p className="text-sm">Struk Pembelian</p>
-                <div className="border-b border-dashed border-gray-400 mt-4"></div>
-              </div>
-
-              <p className="text-2xl font-bold text-foreground text-center mb-1">{formatRupiah(lastTransaction.total)}</p>
-              <p className="text-xs text-muted-foreground text-center mb-4">{lastTransaction.createdAt}</p>
-              
-              <div className="bg-secondary print:bg-transparent rounded-lg p-3 mb-4 max-h-40 print:max-h-none overflow-y-auto print:overflow-visible">
-                {(lastTransaction.items || []).map((item, index) => (
-                  <div key={index} className="flex justify-between text-sm py-1">
-                    <span>{item.quantity}x {item.product.name}</span>
-                    <span>{formatRupiah(item.product.price * item.quantity)}</span>
-                  </div>
-                ))}
-                
-                <div className="border-t border-border print:border-dashed mt-2 pt-2 flex justify-between text-xs text-muted-foreground">
-                  <span>Biaya Layanan (10%)</span>
-                  <span>{formatRupiah(lastTransaction.tax)}</span>
-                </div>
-                
-                {/* Total Detail (Cuma muncul pas print biar rapi) */}
-                <div className="hidden print:flex border-t border-dashed mt-2 pt-2 justify-between font-bold text-sm">
-                  <span>TOTAL</span>
-                  <span>{formatRupiah(lastTransaction.total)}</span>
-                </div>
-              </div>
-
-              {/* Footer Struk (Cuma Muncul Pas Di-Print) */}
-              <div className="hidden print:block text-center mt-8 text-sm">
-                <p>Terima kasih atas kunjungan Anda!</p>
-                <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.</p>
-              </div>
-
-              {/* Tombol Aksi (Hilang pas di-print) */}
-              <div className="flex gap-3 no-print mt-6">
-                <button
-                  onClick={() => window.print()}
-                  className="flex-1 h-12 border border-border text-foreground rounded-lg font-medium hover:bg-secondary flex items-center justify-center gap-2 transition-colors"
-                >
-                  <Printer className="w-4 h-4" />Cetak Struk
-                </button>
-                <button
-                  onClick={handleNewTransaction}
-                  className="flex-1 h-12 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />Transaksi Baru
-                </button>
+            <div className="flex justify-center mb-4 print:hidden">
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-emerald-600" />
               </div>
             </div>
+            <h3 className="text-xl font-bold text-emerald-600 text-center mb-2 print:hidden">Transaksi Berhasil!</h3>
+            
+            {/* Header Struk (Cuma Muncul Pas Di-Print) */}
+            <div className="hidden print:block text-center mb-6 mt-2">
+              <h2 className="text-3xl font-bold mb-1 print:text-black">UMKMify</h2>
+              <p className="text-sm print:text-black">Struk Pembelian</p>
+              <div className="border-b border-dashed border-gray-400 mt-4"></div>
+            </div>
+
+            <p className="text-2xl font-bold text-foreground text-center mb-1 print:text-black print:text-left">{formatRupiah(lastTransaction.total)}</p>
+            <p className="text-xs text-muted-foreground text-center mb-4 print:text-black print:text-left">{lastTransaction.createdAt}</p>
+            
+            <div className="bg-secondary print:bg-transparent rounded-lg p-3 mb-4 max-h-40 print:max-h-none overflow-y-auto print:overflow-visible print:p-0">
+              {(lastTransaction.items || []).map((item, index) => (
+                <div key={index} className="flex justify-between text-sm py-1 print:text-black">
+                  <span>{item.quantity}x {item.product.name}</span>
+                  <span>{formatRupiah(item.product.price * item.quantity)}</span>
+                </div>
+              ))}
+              
+              <div className="border-t border-border print:border-dashed mt-2 pt-2 flex justify-between text-xs text-muted-foreground print:text-black">
+                <span>Biaya Layanan (10%)</span>
+                <span>{formatRupiah(lastTransaction.tax)}</span>
+              </div>
+              
+              <div className="hidden print:flex border-t border-dashed mt-2 pt-2 justify-between font-bold text-sm print:text-black">
+                <span>TOTAL</span>
+                <span>{formatRupiah(lastTransaction.total)}</span>
+              </div>
+            </div>
+
+            {/* Footer Struk (Cuma Muncul Pas Di-Print) */}
+            <div className="hidden print:block text-center mt-8 text-sm print:text-black">
+              <p>Terima kasih atas kunjungan Anda!</p>
+              <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.</p>
+            </div>
+
+            {/* Tombol Aksi (Hilang pas di-print) */}
+            <div className="flex gap-3 print:hidden mt-6">
+              <button
+                onClick={() => window.print()}
+                className="flex-1 h-12 border border-border text-foreground rounded-lg font-medium hover:bg-secondary flex items-center justify-center gap-2 transition-colors"
+              >
+                <Printer className="w-4 h-4" />Cetak Struk
+              </button>
+              <button
+                onClick={handleNewTransaction}
+                className="flex-1 h-12 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />Transaksi Baru
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }
