@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, ShoppingCart, X, Minus, Plus, Trash2, CheckCircle, Printer, RefreshCw, Store, Music } from 'lucide-react';
+import { Search, ShoppingCart, X, Minus, Plus, Trash2, CheckCircle, Printer, RefreshCw } from 'lucide-react';
 import { useStore } from '@/lib/store-context';
 import { formatRupiah } from '@/lib/format';
 import type { Product, Transaction } from '@/lib/types';
@@ -16,9 +16,6 @@ export default function KasirPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastTransaction, setLastTransaction] = useState<Transaction | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  // State untuk Tema Struk
-  const [receiptTheme, setReceiptTheme] = useState<'minimarket' | 'spotify'>('minimarket');
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -55,38 +52,48 @@ export default function KasirPage() {
     if (product.stock > 0) addToCart(product);
   };
 
-  // JURUS ULTIMATE: Print di Window Baru biar gak Blank!
+  // JURUS ULTIMATE: Print di Window Baru dengan ukuran Kertas Struk (Thermal 80mm)
   const printReceipt = () => {
     const printContent = document.getElementById('receipt-content');
     if (!printContent) return;
 
-    // Buka tab/jendela kecil baru
-    const printWindow = window.open('', '', 'width=800,height=900');
+    const printWindow = window.open('', '', 'width=400,height=600');
     if (!printWindow) {
       alert("Pop-up diblokir oleh browser! Izinkan pop-up untuk mencetak struk.");
       return;
     }
 
-    // Tulis ulang HTML khusus untuk print dengan Tailwind CDN
     printWindow.document.write(`
       <html>
         <head>
           <title>Cetak Struk - UMKMify</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
+            /* Mengatur ukuran kertas bawaan browser menjadi struk kasir 80mm */
+            @page { 
+              size: 80mm auto; 
+              margin: 0; 
+            }
             @media print {
               body { 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
                 background-color: white !important;
               }
-              @page { margin: 0; }
+              /* Menghilangkan shadow dan styling berlebih saat di-print ke kertas */
+              #receipt-content {
+                box-shadow: none !important;
+                border: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 15px !important;
+              }
             }
             body { 
               display: flex; 
               justify-content: center; 
               align-items: flex-start; 
-              padding-top: 2rem;
+              padding-top: 1rem;
               background-color: #f3f4f6;
             }
           </style>
@@ -94,7 +101,6 @@ export default function KasirPage() {
         <body>
           ${printContent.outerHTML}
           <script>
-            // Tunggu 1 detik biar Tailwind CDN beres ke-load, baru print otomatis
             setTimeout(() => {
               window.print();
               window.close();
@@ -238,8 +244,64 @@ export default function KasirPage() {
         <CartFooter />
       </div>
 
-      {/* Mobile Cart Bottom Sheet (Kode sebelumnya) */}
-      {/* ... (disingkat biar rapi, aslinya ttp ada) ... */}
+      {/* Mobile Cart Button */}
+      {cartItemCount > 0 && !showCart && (
+        <button
+          onClick={() => setShowCart(true)}
+          className="md:hidden fixed bottom-20 right-4 z-40 bg-primary text-primary-foreground px-4 py-3 rounded-full shadow-lg flex items-center gap-2"
+        >
+          <ShoppingCart className="w-5 h-5" />
+          <span className="font-semibold">Keranjang ({cartItemCount})</span>
+        </button>
+      )}
+
+      {/* Mobile Cart Bottom Sheet */}
+      {showCart && (
+        <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
+          <div className="relative bg-card rounded-t-2xl h-[85vh] flex flex-col w-full shadow-2xl">
+            <div className="flex justify-center py-3">
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+            </div>
+            <div className="px-4 pb-2 border-b border-border flex items-center justify-between">
+              <h2 className="font-bold text-lg text-foreground">Keranjang</h2>
+              <button onClick={() => setShowCart(false)} className="p-2 bg-secondary rounded-full"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {cart.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <ShoppingCart className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">Belum ada produk</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cart.map((item) => (
+                    <div key={item.product.id} className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm truncate">{item.product.name}</p>
+                        <p className="text-primary font-semibold text-sm">{formatRupiah(item.product.price * item.quantity)}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-card border border-border">
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
+                        <button onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)} disabled={item.quantity >= item.product.stock} className="w-8 h-8 flex items-center justify-center rounded-lg bg-card border border-border disabled:opacity-50">
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <button onClick={() => removeFromCart(item.product.id)} className="w-8 h-8 flex items-center justify-center text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <CartFooter isMobile={true} />
+          </div>
+        </div>
+      )}
 
       {/* SUCCESS MODAL & PREVIEW STRUK */}
       {showSuccess && lastTransaction && (
@@ -254,138 +316,79 @@ export default function KasirPage() {
                 <CheckCircle className="w-6 h-6 text-emerald-500" />
                 <h3 className="font-bold text-foreground">Transaksi Sukses!</h3>
               </div>
-              <button onClick={handleNewTransaction} className="p-2 bg-secondary rounded-full hover:bg-secondary/80">
+              <button onClick={handleNewTransaction} className="p-2 bg-secondary rounded-full hover:bg-secondary/80 transition-colors">
                 <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Pilihan Tema */}
-            <div className="p-4 flex gap-2 justify-center bg-card">
-              <button 
-                onClick={() => setReceiptTheme('minimarket')}
-                className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all ${receiptTheme === 'minimarket' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
-              >
-                <Store className="w-4 h-4" /> Ala Minimarket
-              </button>
-              <button 
-                onClick={() => setReceiptTheme('spotify')}
-                className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all ${receiptTheme === 'spotify' ? 'bg-[#1DB954] text-white shadow-md' : 'bg-secondary text-muted-foreground hover:bg-secondary/80'}`}
-              >
-                <Music className="w-4 h-4" /> Ala Spotify
               </button>
             </div>
 
             {/* Scrollable Receipt Area */}
             <div className="flex-1 overflow-y-auto p-6 flex justify-center bg-zinc-200/50">
-              
-              {/* TEMA 1: MINIMARKET (Kertas Thermal) */}
-              {receiptTheme === 'minimarket' && (
-                <div id="receipt-content" className="bg-white text-black p-6 w-full max-w-[320px] mx-auto shadow-md border border-gray-200" style={{ fontFamily: 'monospace' }}>
-                  <div className="text-center mb-4">
-                    <h2 className="font-bold text-2xl uppercase tracking-widest">UMKMify</h2>
-                    <p className="text-xs mt-1 text-gray-600">INNOVATION CUP 2026</p>
-                    <p className="text-xs text-gray-600">Jl. Setiabudhi No. 229, Bandung</p>
-                  </div>
-                  
-                  <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
-                  
-                  <div className="text-xs mb-4 text-gray-700">
-                    <p>Waktu: {lastTransaction.createdAt}</p>
-                    <p>TRX ID: {lastTransaction.id}</p>
-                  </div>
-
-                  <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
-
-                  <div className="space-y-3 mb-4 text-sm">
-                    {lastTransaction.items.map((item, index) => (
-                      <div key={index}>
-                        <p className="font-bold uppercase">{item.product.name}</p>
-                        <div className="flex justify-between text-gray-700">
-                          <span>{item.quantity} x {formatRupiah(item.product.price)}</span>
-                          <span>{formatRupiah(item.product.price * item.quantity)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
-
-                  <div className="space-y-1 text-sm mb-4">
-                    <div className="flex justify-between text-gray-600">
-                      <span>Subtotal</span>
-                      <span>{formatRupiah(lastTransaction.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Pajak (10%)</span>
-                      <span>{formatRupiah(lastTransaction.tax)}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-base mt-2 pt-2 border-t border-gray-300">
-                      <span>TOTAL</span>
-                      <span>{formatRupiah(lastTransaction.total)}</span>
-                    </div>
-                  </div>
-
-                  <div className="text-center mt-8 text-xs text-gray-600">
-                    <p>Barang yang sudah dibeli</p>
-                    <p>tidak dapat dikembalikan.</p>
-                    <p className="mt-2 font-bold uppercase">-- Terima Kasih --</p>
-                  </div>
+              <div id="receipt-content" className="bg-white text-black p-6 w-full max-w-[320px] mx-auto shadow-md border border-gray-200" style={{ fontFamily: 'monospace' }}>
+                <div className="text-center mb-4">
+                  <h2 className="font-bold text-2xl uppercase tracking-widest">UMKMify</h2>
+                  <p className="text-xs mt-1 text-gray-600">INNOVATION CUP 2026</p>
+                  <p className="text-xs text-gray-600">Jl. Setiabudhi No. 229, Bandung</p>
                 </div>
-              )}
+                
+                <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
+                
+                <div className="text-xs mb-4 text-gray-700">
+                  <p>Waktu: {lastTransaction.createdAt}</p>
+                  <p>TRX ID: {lastTransaction.id}</p>
+                </div>
 
-              {/* TEMA 2: SPOTIFY (Dark Modern) */}
-              {receiptTheme === 'spotify' && (
-                <div id="receipt-content" className="bg-[#121212] text-[#B3B3B3] p-8 w-full max-w-[340px] mx-auto shadow-2xl" style={{ fontFamily: 'sans-serif' }}>
-                  <div className="text-center mb-8">
-                    <h2 className="font-black text-4xl uppercase tracking-tighter text-white mb-2">UMKMify</h2>
-                    <p className="text-xs font-bold tracking-[0.2em] uppercase">Receiptify • {lastTransaction.createdAt.split(',')[0]}</p>
+                <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
+
+                <div className="space-y-3 mb-4 text-sm">
+                  {lastTransaction.items.map((item, index) => (
+                    <div key={index}>
+                      <p className="font-bold uppercase">{item.product.name}</p>
+                      <div className="flex justify-between text-gray-700">
+                        <span>{item.quantity} x {formatRupiah(item.product.price)}</span>
+                        <span>{formatRupiah(item.product.price * item.quantity)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-b-2 border-dashed border-gray-400 mb-4"></div>
+
+                <div className="space-y-1 text-sm mb-4">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Subtotal</span>
+                    <span>{formatRupiah(lastTransaction.subtotal)}</span>
                   </div>
-                  
-                  <table className="w-full text-sm mb-8">
-                    <thead>
-                      <tr className="border-b border-[#282828] text-[#1DB954] font-bold text-xs">
-                        <th className="text-left pb-2 w-8">QTY</th>
-                        <th className="text-left pb-2">ITEM</th>
-                        <th className="text-right pb-2">AMT</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-white">
-                      {lastTransaction.items.map((item, index) => (
-                        <tr key={index} className="border-b border-[#282828]/50">
-                          <td className="py-3 font-medium align-top">{item.quantity}</td>
-                          <td className="py-3 pr-2">
-                            <p className="font-bold truncate max-w-[140px]">{item.product.name}</p>
-                            <p className="text-xs text-[#B3B3B3] mt-0.5">{formatRupiah(item.product.price)}</p>
-                          </td>
-                          <td className="py-3 text-right font-medium align-top">{formatRupiah(item.product.price * item.quantity)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  <div className="border-t-2 border-white pt-4 flex justify-between font-black text-xl text-white mb-8">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Pajak (10%)</span>
+                    <span>{formatRupiah(lastTransaction.tax)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-base mt-2 pt-2 border-t border-gray-300">
                     <span>TOTAL</span>
                     <span>{formatRupiah(lastTransaction.total)}</span>
                   </div>
-
-                  <div className="text-center opacity-50">
-                    <p className="text-4xl tracking-widest font-light mt-4" style={{ fontFamily: 'monospace' }}>
-                      |||||||||||||||
-                    </p>
-                    <p className="text-[10px] tracking-widest mt-2 uppercase font-bold">UMKMIFY-TIC-2026</p>
-                  </div>
                 </div>
-              )}
 
+                <div className="text-center mt-8 text-xs text-gray-600">
+                  <p>Barang yang sudah dibeli</p>
+                  <p>tidak dapat dikembalikan.</p>
+                  <p className="mt-2 font-bold uppercase">-- Terima Kasih --</p>
+                </div>
+              </div>
             </div>
 
             {/* Footer Aksi */}
             <div className="p-4 bg-card border-t border-border flex gap-3 z-10">
               <button
+                onClick={handleNewTransaction}
+                className="flex-1 h-12 bg-secondary text-foreground border border-border rounded-lg font-bold hover:bg-secondary/80 flex items-center justify-center gap-2 transition-colors"
+              >
+                <RefreshCw className="w-5 h-5" /> Transaksi Baru
+              </button>
+              <button
                 onClick={printReceipt}
                 className="flex-1 h-12 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
               >
-                <Printer className="w-5 h-5" /> Cetak Struk ({receiptTheme === 'spotify' ? 'Spotify' : 'Minimarket'})
+                <Printer className="w-5 h-5" /> Cetak Struk
               </button>
             </div>
 
