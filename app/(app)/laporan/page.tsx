@@ -8,14 +8,12 @@ import { formatRupiah, formatRupiahShort, formatNumber } from '@/lib/format';
 
 const dateRanges = ['Hari Ini', 'Minggu Ini', 'Bulan Ini', 'Tahun Ini'] as const;
 
-// Helper super aman untuk baca tanggal dari berbagai format browser/database
 const parseCustomDate = (dateStr: string) => {
   try {
     if (!dateStr) return new Date();
     const [datePart] = dateStr.split(',');
     const parts = datePart.trim().split(/[-/]/);
     if (parts.length === 3) {
-      // Asumsi format lokal id-ID: DD/MM/YYYY
       return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
     }
     return new Date(dateStr);
@@ -29,14 +27,12 @@ export default function LaporanPage() {
   const [selectedRange, setSelectedRange] = useState<string>('Minggu Ini');
   const [showRangeDropdown, setShowRangeDropdown] = useState(false);
 
-  // Filter transaksi berdasarkan range waktu
   const filteredTransactions = useMemo(() => {
     const now = new Date();
-    now.setHours(23, 59, 59, 999); // Akhir hari ini
+    now.setHours(23, 59, 59, 999);
     
     return transactions.filter(trx => {
       const trxDate = parseCustomDate(trx.createdAt);
-      
       switch (selectedRange) {
         case 'Hari Ini':
           return trxDate.toDateString() === new Date().toDateString();
@@ -56,28 +52,23 @@ export default function LaporanPage() {
     });
   }, [transactions, selectedRange]);
 
-  // Hitung metrik utama (RATA-RATA TRANSAKSI SUDAH DINAMIS DI SINI)
   const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
   const totalTrx = filteredTransactions.length;
   const avgTrx = totalTrx > 0 ? totalRevenue / totalTrx : 0;
 
-  // Bangun data grafik yang BENTUKNYA BERUBAH sesuai range yang dipilih
   const chartData = useMemo(() => {
     if (selectedRange === 'Hari Ini' || selectedRange === 'Minggu Ini') {
       const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
       const map: Record<string, number> = { Min:0, Sen:0, Sel:0, Rab:0, Kam:0, Jum:0, Sab:0 };
-      
       filteredTransactions.forEach(trx => {
         const d = parseCustomDate(trx.createdAt);
         map[days[d.getDay()]] += trx.total;
       });
       return days.map(day => ({ day, amount: map[day] }));
     }
-    
     if (selectedRange === 'Bulan Ini') {
       const weeks = ['Mg 1', 'Mg 2', 'Mg 3', 'Mg 4', 'Mg 5'];
       const map: Record<string, number> = { 'Mg 1':0, 'Mg 2':0, 'Mg 3':0, 'Mg 4':0, 'Mg 5':0 };
-      
       filteredTransactions.forEach(trx => {
         const d = parseCustomDate(trx.createdAt);
         const weekNum = Math.ceil(d.getDate() / 7);
@@ -86,54 +77,112 @@ export default function LaporanPage() {
       });
       return weeks.map(day => ({ day, amount: map[day] }));
     }
-    
     if (selectedRange === 'Tahun Ini') {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
       const map: Record<string, number> = {};
       months.forEach(m => map[m] = 0);
-      
       filteredTransactions.forEach(trx => {
         const d = parseCustomDate(trx.createdAt);
         map[months[d.getMonth()]] += trx.total;
       });
       return months.map(day => ({ day, amount: map[day] }));
     }
-    
     return [];
   }, [filteredTransactions, selectedRange]);
 
-  // FIX: Formatter pintar untuk grafik Laporan
   const formatYAxis = (value: number) => {
     if (value === 0) return 'Rp 0';
-    if (value < 1000000) return `Rp ${value / 1000}rb`; // Munculin 'rb' kalau di bawah 1 Juta
-    return `Rp ${(value / 1000000).toFixed(1)}jt`; // Munculin 'jt' kalau 1 Juta ke atas
+    if (value < 1000000) return `Rp ${value / 1000}rb`;
+    return `Rp ${(value / 1000000).toFixed(1)}jt`;
   };
 
-  // Export PDF
+  // FIX: JURUS EXPORT PDF CANTIK
   const handleExportPDF = () => {
-    const content = `
-      LAPORAN KEUANGAN - UMKMify
-      Periode: ${selectedRange}
-      ================================
-      Total Pendapatan : ${formatRupiah(totalRevenue)}
-      Total Transaksi  : ${totalTrx} transaksi
-      Rata-rata        : ${formatRupiah(avgTrx)}
-      
-      RIWAYAT TRANSAKSI:
-      ${filteredTransactions.map((t, i) =>
-        `${i + 1}. ${t.createdAt} | ${t.items.length} item | ${formatRupiah(t.total)} | ${t.status}`
-      ).join('\n')}
-    `;
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `laporan-bisnisku-${selectedRange.replace(' ', '-')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const printWindow = window.open('', '', 'width=900,height=900');
+    if (!printWindow) {
+      alert("Pop-up diblokir oleh browser! Izinkan pop-up untuk mencetak PDF.");
+      return;
+    }
+
+    const rowsHtml = filteredTransactions.map((t, i) => `
+      <tr style="border-bottom: 1px solid #e5e7eb; font-size: 14px;">
+        <td style="padding: 12px 16px;">${i + 1}</td>
+        <td style="padding: 12px 16px;">${t.createdAt}</td>
+        <td style="padding: 12px 16px;">${t.items.length > 0 ? t.items.length + ' item' : 'Campuran'}</td>
+        <td style="padding: 12px 16px; font-weight: 500;">${formatRupiah(t.total)}</td>
+        <td style="padding: 12px 16px;">
+          <span style="background-color: #d1fae5; color: #15803d; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;">
+            ${t.status}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Laporan Keuangan - UMKMify</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #1f2937; padding: 40px; }
+            .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 30px; }
+            .title { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; color: #111827; }
+            .subtitle { font-size: 16px; color: #6b7280; margin: 0; }
+            .summary-grid { display: flex; gap: 20px; margin-bottom: 30px; }
+            .card { background-color: #f9fafb; padding: 20px; border-radius: 12px; flex: 1; border: 1px solid #f3f4f6; }
+            .card-label { font-size: 14px; color: #6b7280; margin: 0 0 8px 0; }
+            .card-value { font-size: 24px; font-weight: bold; margin: 0; }
+            table { width: 100%; border-collapse: collapse; text-align: left; }
+            th { background-color: #f3f4f6; color: #4b5563; font-size: 14px; padding: 12px 16px; font-weight: 600; }
+            @media print {
+              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">Laporan Keuangan UMKMify</h1>
+            <p class="subtitle">Periode: ${selectedRange}</p>
+          </div>
+          
+          <div class="summary-grid">
+            <div class="card">
+              <p class="card-label">Total Pendapatan</p>
+              <p class="card-value" style="color: #059669;">${formatRupiah(totalRevenue)}</p>
+            </div>
+            <div class="card">
+              <p class="card-label">Total Transaksi</p>
+              <p class="card-value" style="color: #2563eb;">${totalTrx}</p>
+            </div>
+            <div class="card">
+              <p class="card-label">Rata-rata per Transaksi</p>
+              <p class="card-value" style="color: #7c3aed;">${formatRupiah(avgTrx)}</p>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="border-top-left-radius: 8px;">No</th>
+                <th>Waktu</th>
+                <th>Produk</th>
+                <th>Total</th>
+                <th style="border-top-right-radius: 8px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #6b7280;">Tidak ada transaksi</td></tr>'}
+            </tbody>
+          </table>
+          <script>
+            setTimeout(() => { window.print(); window.close(); }, 500);
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
-  // Export Excel (CSV)
+  // FIX: MAGIC KODE EXCEL INDONESIA (\uFEFF dan ;)
   const handleExportExcel = () => {
     const headers = ['No', 'Waktu', 'Jumlah Item', 'Subtotal', 'Pajak', 'Total', 'Status'];
     const rows = filteredTransactions.map((t, i) => [
@@ -145,7 +194,7 @@ export default function LaporanPage() {
       t.total,
       t.status,
     ]);
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const csv = "\uFEFF" + [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

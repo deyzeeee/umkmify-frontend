@@ -39,12 +39,12 @@ export default function StokPage() {
   const lowStockProducts = products.filter(p => p.stock <= p.minStock && p.stock > 0);
   const totalStockValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
 
-  // FIX: Menggunakan rumus persentase keuntungan dari modal (Markup)
   const getMargin = (price: number, costPrice?: number) => {
     if (!costPrice || costPrice <= 0 || !price || price <= 0) return null;
     return Math.round(((price - costPrice) / costPrice) * 100);
   };
 
+  // FIX: MAGIC KODE EXCEL INDONESIA (\uFEFF dan ;)
   const handleExportExcel = () => {
     const headers = ['Nama Produk', 'Kategori', 'Stok', 'Min Stok', 'Harga Modal', 'Harga Jual', 'Margin (%)', 'Update'];
     const rows = filteredProducts.map(p => [
@@ -57,7 +57,7 @@ export default function StokPage() {
       getMargin(p.price, p.costPrice) ?? '-',
       p.updatedAt,
     ]);
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const csv = "\uFEFF" + [headers, ...rows].map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -354,6 +354,7 @@ export default function StokPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 pt-4 space-y-4">
+              {/* ... (Isi form sama persis kaya sebelumnya) ... */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">Nama Produk</label>
                 <input
@@ -404,7 +405,6 @@ export default function StokPage() {
                 </div>
               </div>
 
-              {/* Preview margin real-time */}
               {previewMargin !== null && (
                 <div className={`rounded-lg px-4 py-3 ${
                   previewMargin >= 20
