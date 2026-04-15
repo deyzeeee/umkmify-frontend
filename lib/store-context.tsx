@@ -62,6 +62,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = user !== null;
 
+  // Cek token dan user saat pertama kali load
   useEffect(() => {
     const token = getToken();
     const savedUser = localStorage.getItem('user');
@@ -76,14 +77,91 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  // Fetch data kalau sudah login
   useEffect(() => {
     if (isAuthenticated) {
       refreshProducts();
-      refreshDashboard();
       refreshTransactions();
     }
   }, [isAuthenticated]);
 
+  // ==========================================
+  // LOGIKA PENGHITUNGAN DASHBOARD DINAMIS
+  // ==========================================
+  // Efek ini akan otomatis berjalan SETIAP KALI ada transaksi baru,
+  // sehingga Dashboard akan selalu akurat tanpa bergantung pada API eksternal!
+  useEffect(() => {
+    if (transactions.length === 0) return;
+
+    setTotalTransactions(transactions.length);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let calcTodaySales = 0;
+    const daysLabel = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    const salesMap: Record<string, number> = {};
+    daysLabel.forEach(d => salesMap[d] = 0);
+
+    const pSales: Record<string, TopProduct> = {};
+
+    transactions.forEach(trx => {
+      // Parsing tanggal transaksi dari format id-ID (DD/MM/YYYY)
+      const [datePart] = trx.createdAt.split(',');
+      const parts = datePart.split(/[-/]/);
+      let trxDate = new Date();
+      if (parts.length === 3) {
+        trxDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      }
+      trxDate.setHours(0, 0, 0, 0);
+
+      // Hitung Penjualan Hari Ini
+      if (trxDate.getTime() === today.getTime()) {
+        calcTodaySales += trx.total;
+      }
+
+      // Hitung Penjualan 7 Hari Terakhir untuk Grafik
+      const diffTime = today.getTime() - trxDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+      if (diffDays >= 0 && diffDays < 7) {
+        const dayName = daysLabel[trxDate.getDay()];
+        salesMap[dayName] += trx.total;
+      }
+
+      // Hitung Produk Terlaris
+      trx.items.forEach(item => {
+        if (!pSales[item.product.id]) {
+          pSales[item.product.id] = { id: item.product.id, name: item.product.name, sold: 0, price: item.product.price };
+        }
+        pSales[item.product.id].sold += item.quantity;
+      });
+    });
+
+    setTodaySales(calcTodaySales);
+
+    // Susun data grafik secara berurutan
+    const chartData: DailySales[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dayName = daysLabel[d.getDay()];
+      chartData.push({ day: dayName, amount: salesMap[dayName] });
+    }
+    setDailySales(chartData);
+
+    // Ambil 5 produk paling laris
+    setTopProducts(Object.values(pSales).sort((a, b) => b.sold - a.sold).slice(0, 5));
+  }, [transactions]);
+
+  // Update Stok Menipis otomatis
+  useEffect(() => {
+    setLowStockCount(products.filter(p => p.stock <= p.minStock && p.stock > 0).length);
+  }, [products]);
+
+
+  // ==========================================
+  // FUNGSI AUTH & CRUD
+  // ==========================================
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
       const res = await fetch(`${BASE_URL}/api/auth/login`, {
@@ -141,9 +219,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         updatedAt: p.created_at?.split('T')[0] || '-',
       }));
       setProducts(mapped);
-      setLowStockCount(mapped.filter(p => p.stock <= p.minStock && p.stock > 0).length);
     } catch (err) { console.error('Gagal fetch produk:', err); }
   }, []);
+
+  const refreshTransactions = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/transactions`, { headers: authHeader() });
+      if (!res.ok) return;
+      const data = await res.json();
+      const mapped: Transaction[] = data.map((t: any) => ({
+        id: t.id,
+        items: t.transaction_items?.map((item: any) => ({
+          product: {
+            id: item.product_id,
+            name: item.product_name,
+            price: item.price,
+            stock: 0,
+            category: 'Lainnya' as Product['category'],
+            minStock: 0,
+            updatedAt: '',
+          },
+          quantity: item.quantity,
+        })) || [],
+        subtotal: Math.round(t.total / 1.1),
+        tax: t.total - Math.round(t.total / 1.1),
+        total: t.total,
+        status: 'Selesai' as const,
+        createdAt: new Date(t.created_at).toLocaleString('id-ID'),
+      }));
+      setTransactions(mapped);
+    } catch (err) { console.error('Gagal fetch transaksi:', err); }
+  }, []);
+
+  // Dashboard di-refresh otomatis dengan menarik ulang data transaksi terbaru
+  const refreshDashboard = useCallback(async () => {
+    await refreshTransactions();
+  }, [refreshTransactions]);
 
   const addProduct = useCallback(async (product: Omit<Product, 'id' | 'updatedAt'>) => {
     try {
@@ -191,74 +302,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (err) { console.error('Gagal hapus produk:', err); }
   }, [refreshProducts]);
 
-  const refreshDashboard = useCallback(async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/api/dashboard/stats`, { headers: authHeader() });
-      if (!res.ok) return;
-      const data = await res.json();
-
-      setTodaySales(data.omzet_hari_ini || 0);
-      setTotalTransactions(data.jumlah_transaksi || 0);
-      setLowStockCount(data.produk_stok_kritis || 0);
-
-      const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-      const salesMap: Record<string, number> = {};
-      days.forEach(d => salesMap[d] = 0);
-
-      if (data.penjualan_7_hari?.length > 0) {
-        data.penjualan_7_hari.forEach((item: any) => {
-          const total = (item.quantity || 1) * (item.price || 0);
-          const dayIdx = new Date().getDay();
-          salesMap[days[dayIdx]] = (salesMap[days[dayIdx]] || 0) + total;
-        });
-      }
-
-      const salesArray: DailySales[] = days.map(day => ({
-        day,
-        amount: salesMap[day] || 0,
-      }));
-      setDailySales(salesArray);
-
-      if (data.stok_kritis?.length > 0) {
-        setTopProducts(data.stok_kritis.slice(0, 5).map((p: any) => ({
-          id: p.id, name: p.name,
-          sold: Math.floor(Math.random() * 100) + 50,
-          price: p.price,
-        })));
-      }
-    } catch (err) { console.error('Gagal fetch dashboard:', err); }
-  }, []);
-
-  const refreshTransactions = useCallback(async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/api/transactions`, { headers: authHeader() });
-      if (!res.ok) return;
-      const data = await res.json();
-      const mapped: Transaction[] = data.map((t: any) => ({
-        id: t.id,
-        items: t.transaction_items?.map((item: any) => ({
-          product: {
-            id: item.product_id,
-            name: item.product_name,
-            price: item.price,
-            stock: 0,
-            category: 'Lainnya' as Product['category'],
-            minStock: 0,
-            updatedAt: '',
-          },
-          quantity: item.quantity,
-        })) || [],
-        subtotal: Math.round(t.total / 1.1),
-        tax: t.total - Math.round(t.total / 1.1),
-        total: t.total,
-        status: 'Selesai' as const,
-        createdAt: new Date(t.created_at).toLocaleString('id-ID'),
-      }));
-      setTransactions(mapped);
-      setTotalTransactions(mapped.length);
-    } catch (err) { console.error('Gagal fetch transaksi:', err); }
-  }, []);
-
   const processTransaction = useCallback(async (): Promise<Transaction | null> => {
     if (cart.length === 0) return null;
     const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
@@ -289,12 +332,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toLocaleString('id-ID'),
       };
       await refreshProducts();
-      await refreshDashboard();
-      await refreshTransactions();
+      await refreshTransactions(); // Ini otomatis mengupdate Dashboard!
       setCart([]);
       return transaction;
     } catch (err) { console.error('Gagal proses transaksi:', err); alert('Gagal terhubung ke server'); return null; }
-  }, [cart, refreshProducts, refreshDashboard, refreshTransactions]);
+  }, [cart, refreshProducts, refreshTransactions]);
 
   const addToCart = useCallback((product: Product) => {
     if (product.stock <= 0) return;

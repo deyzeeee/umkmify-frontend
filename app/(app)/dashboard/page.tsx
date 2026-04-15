@@ -2,7 +2,7 @@
 
 import { DollarSign, ShoppingCart, Package, TrendingUp, Zap } from 'lucide-react';
 import { useStore } from '@/lib/store-context';
-import { formatRupiahShort, formatRupiah, formatNumber } from '@/lib/format';
+import { formatRupiahShort, formatNumber } from '@/lib/format';
 import { SalesChart } from '@/components/dashboard/sales-chart';
 import { TopProductsList } from '@/components/dashboard/top-products';
 import { useRouter } from 'next/navigation';
@@ -10,10 +10,11 @@ import { useRouter } from 'next/navigation';
 export default function DashboardPage() {
   const { todaySales, totalTransactions, lowStockCount, profitMargin, products } = useStore();
   const router = useRouter();
+  
   // Find the product with lowest stock for AI insight
   const lowStockProduct = products.length > 0 
-  ? products.reduce((min, p) => p.stock < min.stock ? p : min, products[0])
-  : null;
+    ? products.reduce((min, p) => p.stock < min.stock ? p : min, products[0])
+    : null;
   
   const metrics = [
     {
@@ -55,7 +56,7 @@ export default function DashboardPage() {
   ];
   
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 pb-24 md:pb-6">
       {/* Header */}
       <header className="mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-foreground">Dashboard</h1>
@@ -123,10 +124,10 @@ export default function DashboardPage() {
                   Segera lakukan restocking untuk menghindari kehabisan stok.
                 </p>
                 <button 
-                onClick={() => router.push('/stok')}
-                className="mt-3 px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors"
+                  onClick={() => router.push('/stok')}
+                  className="mt-3 px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors"
                 >
-                Lihat Rekomendasi →
+                  Lihat Rekomendasi →
                 </button>
               </div>
             </div>

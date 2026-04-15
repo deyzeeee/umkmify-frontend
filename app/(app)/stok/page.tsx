@@ -39,9 +39,10 @@ export default function StokPage() {
   const lowStockProducts = products.filter(p => p.stock <= p.minStock && p.stock > 0);
   const totalStockValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0);
 
+  // FIX: Menggunakan rumus persentase keuntungan dari modal (Markup)
   const getMargin = (price: number, costPrice?: number) => {
-    if (!costPrice || costPrice <= 0) return null;
-    return Math.round(((price - costPrice) / price) * 100);
+    if (!costPrice || costPrice <= 0 || !price || price <= 0) return null;
+    return Math.round(((price - costPrice) / costPrice) * 100);
   };
 
   const handleExportExcel = () => {
@@ -117,7 +118,7 @@ export default function StokPage() {
     : null;
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 pb-24 md:pb-6">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground">Manajemen Stok</h1>
@@ -126,14 +127,14 @@ export default function StokPage() {
         <div className="flex gap-2">
           <button
             onClick={handleExportExcel}
-            className="hidden md:flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary"
+            className="hidden md:flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors"
           >
             <FileSpreadsheet className="w-4 h-4" />
             Export Excel
           </button>
           <button
             onClick={openAddModal}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Tambah Produk
@@ -161,7 +162,7 @@ export default function StokPage() {
             className="w-full h-12 pl-10 pr-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
           {categories.map((category) => (
             <button
               key={category}
@@ -236,13 +237,13 @@ export default function StokPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openEditModal(product)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg text-primary hover:bg-primary/10"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg text-primary hover:bg-primary/10 transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(product.id)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg text-destructive hover:bg-destructive/10"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -307,13 +308,13 @@ export default function StokPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => openEditModal(product)}
-                  className="flex-1 h-10 flex items-center justify-center gap-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10"
+                  className="flex-1 h-10 flex items-center justify-center gap-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors"
                 >
                   <Edit2 className="w-4 h-4" />Edit
                 </button>
                 <button
                   onClick={() => handleDelete(product.id)}
-                  className="flex-1 h-10 flex items-center justify-center gap-2 text-sm font-medium text-destructive border border-destructive rounded-lg hover:bg-destructive/10"
+                  className="flex-1 h-10 flex items-center justify-center gap-2 text-sm font-medium text-destructive border border-destructive rounded-lg hover:bg-destructive/10 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />Hapus
                 </button>
@@ -329,7 +330,7 @@ export default function StokPage() {
         {/* Mobile Export */}
         <button
           onClick={handleExportExcel}
-          className="w-full flex items-center justify-center gap-2 h-12 border border-border rounded-lg text-foreground hover:bg-secondary"
+          className="w-full flex items-center justify-center gap-2 h-12 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors"
         >
           <FileSpreadsheet className="w-4 h-4" />Export Excel
         </button>
@@ -347,7 +348,7 @@ export default function StokPage() {
               <h3 className="text-lg font-bold text-foreground">
                 {editingProduct ? 'Edit Produk' : 'Tambah Produk'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-secondary rounded-lg">
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-secondary rounded-lg transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -359,7 +360,7 @@ export default function StokPage() {
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                   placeholder="Masukkan nama produk"
                   required
                 />
@@ -370,7 +371,7 @@ export default function StokPage() {
                 <select
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value as CategoryType)}
-                  className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 >
                   <option value="Minuman">Minuman</option>
                   <option value="Makanan">Makanan</option>
@@ -386,7 +387,7 @@ export default function StokPage() {
                     type="number"
                     value={formCostPrice}
                     onChange={(e) => setFormCostPrice(e.target.value)}
-                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     placeholder="0"
                   />
                 </div>
@@ -396,7 +397,7 @@ export default function StokPage() {
                     type="number"
                     value={formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
-                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     placeholder="0"
                     required
                   />
@@ -432,7 +433,7 @@ export default function StokPage() {
                     type="number"
                     value={formStock}
                     onChange={(e) => setFormStock(e.target.value)}
-                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     placeholder="0"
                     required
                   />
@@ -443,7 +444,7 @@ export default function StokPage() {
                     type="number"
                     value={formMinStock}
                     onChange={(e) => setFormMinStock(e.target.value)}
-                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    className="w-full h-12 px-4 rounded-lg border border-input bg-card text-foreground text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     placeholder="0"
                     required
                   />
@@ -454,13 +455,13 @@ export default function StokPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 h-12 border border-border text-foreground rounded-lg font-medium hover:bg-secondary"
+                  className="flex-1 h-12 border border-border text-foreground rounded-lg font-medium hover:bg-secondary transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 h-12 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90"
+                  className="flex-1 h-12 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
                 >
                   Simpan
                 </button>

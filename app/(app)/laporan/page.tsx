@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { FileText, FileSpreadsheet, TrendingUp, Receipt, DollarSign, ChevronDown } from 'lucide-react';
 import { Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useStore } from '@/lib/store-context';
@@ -8,73 +8,99 @@ import { formatRupiah, formatRupiahShort, formatNumber } from '@/lib/format';
 
 const dateRanges = ['Hari Ini', 'Minggu Ini', 'Bulan Ini', 'Tahun Ini'] as const;
 
+// Helper super aman untuk baca tanggal dari berbagai format browser/database
+const parseCustomDate = (dateStr: string) => {
+  try {
+    if (!dateStr) return new Date();
+    const [datePart] = dateStr.split(',');
+    const parts = datePart.trim().split(/[-/]/);
+    if (parts.length === 3) {
+      // Asumsi format lokal id-ID: DD/MM/YYYY
+      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    }
+    return new Date(dateStr);
+  } catch {
+    return new Date();
+  }
+};
+
 export default function LaporanPage() {
   const { transactions } = useStore();
   const [selectedRange, setSelectedRange] = useState<string>('Minggu Ini');
   const [showRangeDropdown, setShowRangeDropdown] = useState(false);
 
-  // Filter transaksi berdasarkan range
+  // Filter transaksi berdasarkan range waktu
   const filteredTransactions = useMemo(() => {
-  const now = new Date();
-  return transactions.filter(trx => {
-    // Parse format Indonesia: "14/4/2026, 13.49.06"
-    let trxDate: Date;
-    try {
-      // Ganti titik jadi titik dua untuk waktu, slash jadi format yang bisa diparsed
-      const cleaned = trx.createdAt
-        .replace(/(\d+)\.(\d+)\.(\d+)$/, '$1:$2:$3') // 13.49.06 → 13:49:06
-        .replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1');  // 14/4/2026 → 2026-4-14
-      trxDate = new Date(cleaned);
-      if (isNaN(trxDate.getTime())) trxDate = new Date(trx.createdAt);
-    } catch {
-      return true;
-    }
-    if (isNaN(trxDate.getTime())) return true;
-
-    switch (selectedRange) {
-      case 'Hari Ini':
-        return trxDate.toDateString() === now.toDateString();
-      case 'Minggu Ini': {
-        const weekAgo = new Date(now);
-        weekAgo.setDate(now.getDate() - 7);
-        return trxDate >= weekAgo;
+    const now = new Date();
+    now.setHours(23, 59, 59, 999); // Akhir hari ini
+    
+    return transactions.filter(trx => {
+      const trxDate = parseCustomDate(trx.createdAt);
+      
+      switch (selectedRange) {
+        case 'Hari Ini':
+          return trxDate.toDateString() === new Date().toDateString();
+        case 'Minggu Ini': {
+          const weekAgo = new Date();
+          weekAgo.setDate(now.getDate() - 7);
+          weekAgo.setHours(0, 0, 0, 0);
+          return trxDate >= weekAgo && trxDate <= now;
+        }
+        case 'Bulan Ini':
+          return trxDate.getMonth() === now.getMonth() && trxDate.getFullYear() === now.getFullYear();
+        case 'Tahun Ini':
+          return trxDate.getFullYear() === now.getFullYear();
+        default:
+          return true;
       }
-      case 'Bulan Ini':
-        return trxDate.getMonth() === now.getMonth() &&
-          trxDate.getFullYear() === now.getFullYear();
-      case 'Tahun Ini':
-        return trxDate.getFullYear() === now.getFullYear();
-      default:
-        return true;
-    }
-  });
-}, [transactions, selectedRange]);
+    });
+  }, [transactions, selectedRange]);
 
-  // Hitung metrik dari transaksi yang sudah difilter
+  // Hitung metrik utama
   const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total, 0);
   const totalTrx = filteredTransactions.length;
   const avgTrx = totalTrx > 0 ? totalRevenue / totalTrx : 0;
 
-  // Bangun data grafik 7 hari dari transaksi real
+  // Bangun data grafik yang BENTUKNYA BERUBAH sesuai range yang dipilih
   const chartData = useMemo(() => {
-  const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-  const map: Record<string, number> = {};
-  days.forEach(d => map[d] = 0);
-  
-  filteredTransactions.forEach(trx => {
-    try {
-      const cleaned = trx.createdAt
-        .replace(/(\d+)\.(\d+)\.(\d+)$/, '$1:$2:$3')
-        .replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$2-$1');
-      const d = new Date(cleaned);
-      if (!isNaN(d.getTime())) {
-        const dayName = days[d.getDay()];
-        map[dayName] = (map[dayName] || 0) + trx.total;
-      }
-    } catch {}
-  });
-  return days.map(day => ({ day, amount: map[day] }));
-} , [filteredTransactions]);
+    if (selectedRange === 'Hari Ini' || selectedRange === 'Minggu Ini') {
+      const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+      const map: Record<string, number> = { Min:0, Sen:0, Sel:0, Rab:0, Kam:0, Jum:0, Sab:0 };
+      
+      filteredTransactions.forEach(trx => {
+        const d = parseCustomDate(trx.createdAt);
+        map[days[d.getDay()]] += trx.total;
+      });
+      return days.map(day => ({ day, amount: map[day] }));
+    }
+    
+    if (selectedRange === 'Bulan Ini') {
+      const weeks = ['Mg 1', 'Mg 2', 'Mg 3', 'Mg 4', 'Mg 5'];
+      const map: Record<string, number> = { 'Mg 1':0, 'Mg 2':0, 'Mg 3':0, 'Mg 4':0, 'Mg 5':0 };
+      
+      filteredTransactions.forEach(trx => {
+        const d = parseCustomDate(trx.createdAt);
+        const weekNum = Math.ceil(d.getDate() / 7);
+        const key = `Mg ${weekNum > 5 ? 5 : weekNum}`;
+        map[key] += trx.total;
+      });
+      return weeks.map(day => ({ day, amount: map[day] }));
+    }
+    
+    if (selectedRange === 'Tahun Ini') {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+      const map: Record<string, number> = {};
+      months.forEach(m => map[m] = 0);
+      
+      filteredTransactions.forEach(trx => {
+        const d = parseCustomDate(trx.createdAt);
+        map[months[d.getMonth()]] += trx.total;
+      });
+      return months.map(day => ({ day, amount: map[day] }));
+    }
+    
+    return [];
+  }, [filteredTransactions, selectedRange]);
 
   const formatYAxis = (value: number) => {
     if (value === 0) return 'Rp 0';
@@ -155,7 +181,7 @@ export default function LaporanPage() {
   ];
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 pb-24 md:pb-6">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground">Laporan Keuangan</h1>
@@ -165,7 +191,7 @@ export default function LaporanPage() {
           <div className="relative">
             <button
               onClick={() => setShowRangeDropdown(!showRangeDropdown)}
-              className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:bg-secondary"
+              className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:bg-secondary transition-colors"
             >
               <span className="text-sm">{selectedRange}</span>
               <ChevronDown className="w-4 h-4" />
@@ -178,7 +204,7 @@ export default function LaporanPage() {
                     <button
                       key={range}
                       onClick={() => { setSelectedRange(range); setShowRangeDropdown(false); }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-secondary first:rounded-t-lg last:rounded-b-lg ${
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg ${
                         selectedRange === range ? 'text-primary font-medium' : 'text-foreground'
                       }`}
                     >
@@ -192,14 +218,14 @@ export default function LaporanPage() {
           <div className="hidden md:flex gap-2">
             <button
               onClick={handleExportPDF}
-              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary"
+              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors"
             >
               <FileText className="w-4 h-4" />
               Export PDF
             </button>
             <button
               onClick={handleExportExcel}
-              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary"
+              className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors"
             >
               <FileSpreadsheet className="w-4 h-4" />
               Export Excel
@@ -209,7 +235,7 @@ export default function LaporanPage() {
       </header>
 
       {/* Summary Cards */}
-      <div className="flex md:grid md:grid-cols-3 gap-4 mb-6 overflow-x-auto pb-2 md:pb-0 snap-x snap-mandatory">
+      <div className="flex md:grid md:grid-cols-3 gap-4 mb-6 overflow-x-auto pb-2 md:pb-0 snap-x snap-mandatory scrollbar-hide">
         {summaryCards.map((card) => (
           <div
             key={card.label}
@@ -229,7 +255,7 @@ export default function LaporanPage() {
 
       {/* Chart */}
       <div className="bg-card rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-4 md:p-5 mb-6">
-        <h3 className="font-semibold text-foreground mb-4">Pendapatan Harian</h3>
+        <h3 className="font-semibold text-foreground mb-4">Pendapatan: {selectedRange}</h3>
         <div className="h-[200px] md:h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
@@ -313,10 +339,10 @@ export default function LaporanPage() {
 
       {/* Mobile Export */}
       <div className="md:hidden flex gap-3 mt-6">
-        <button onClick={handleExportPDF} className="flex-1 flex items-center justify-center gap-2 h-12 border border-border rounded-lg text-foreground hover:bg-secondary">
+        <button onClick={handleExportPDF} className="flex-1 flex items-center justify-center gap-2 h-12 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors">
           <FileText className="w-4 h-4" />Export PDF
         </button>
-        <button onClick={handleExportExcel} className="flex-1 flex items-center justify-center gap-2 h-12 border border-border rounded-lg text-foreground hover:bg-secondary">
+        <button onClick={handleExportExcel} className="flex-1 flex items-center justify-center gap-2 h-12 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors">
           <FileSpreadsheet className="w-4 h-4" />Export Excel
         </button>
       </div>
